@@ -150,10 +150,12 @@ const jumpToChat = (newChatId) => {
 <style scoped>
 .dating-app-container {
   position: absolute;
-  top: 0;
+  /* 整个容器下移到宿主状态栏之下：聊天室/速配等 absolute 全屏子页
+     也一并避让（此前仅 padding 下移文档流内容，absolute 子页仍会盖住顶部） */
+  top: var(--ai-phone-app-safe-top, 44px);
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--ai-phone-app-safe-top, 44px));
   background-color: #f4f5f7;
   color: #1c1c1e;
   /* 去掉高 z-index，避免盖住宿主右上角的系统返回胶囊 */
@@ -162,9 +164,6 @@ const jumpToChat = (newChatId) => {
   flex-direction: column;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  /* 避开宿主顶部状态栏：内容整体下移，页面相应缩短。
-     宿主会注入 --ai-phone-app-safe-top（未注入时用 44px 兜底）。 */
-  padding-top: var(--ai-phone-app-safe-top, 44px);
 }
 
 .slide-up-enter-active,
@@ -259,7 +258,7 @@ const jumpToChat = (newChatId) => {
 
 .elegant-toast-container {
   position: absolute;
-  top: calc(var(--ai-phone-app-safe-top, 44px) + 64px);
+  top: 64px;
   left: 0;
   width: 100%;
   display: flex;
