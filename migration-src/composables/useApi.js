@@ -1,9 +1,7 @@
 import { ref, watch } from 'vue'
+import { safeParse, safeSetJson } from './safeStorage'
 
-const load = (key, def) => {
-  const s = localStorage.getItem(key)
-  return s ? JSON.parse(s) : def
-}
+const load = (key, def) => safeParse(key, def)
 
 // 主 API
 const apiUrl = ref(load('apiUrl', 'https://api.openai.com/v1/chat/completions'))
@@ -24,20 +22,20 @@ const subApiModel = ref(load('subApiModel', ''))
 const apiPresets = ref(load('apiPresets', []))
 const subApiPresets = ref(load('subApiPresets', []))
 
-watch(apiUrl, (v) => localStorage.setItem('apiUrl', JSON.stringify(v)))
-watch(apiKey, (v) => localStorage.setItem('apiKey', JSON.stringify(v)))
-watch(apiModel, (v) => localStorage.setItem('apiModel', JSON.stringify(v)))
-watch(temperature, (v) => localStorage.setItem('temperature', JSON.stringify(v)))
-watch(top_p, (v) => localStorage.setItem('top_p', JSON.stringify(v)))
-watch(stream, (v) => localStorage.setItem('stream', JSON.stringify(v)))
+watch(apiUrl, (v) => safeSetJson('apiUrl', v))
+watch(apiKey, (v) => safeSetJson('apiKey', v))
+watch(apiModel, (v) => safeSetJson('apiModel', v))
+watch(temperature, (v) => safeSetJson('temperature', v))
+watch(top_p, (v) => safeSetJson('top_p', v))
+watch(stream, (v) => safeSetJson('stream', v))
 
-watch(useSubApi, (v) => localStorage.setItem('useSubApi', JSON.stringify(v)))
-watch(subApiUrl, (v) => localStorage.setItem('subApiUrl', JSON.stringify(v)))
-watch(subApiKey, (v) => localStorage.setItem('subApiKey', JSON.stringify(v)))
-watch(subApiModel, (v) => localStorage.setItem('subApiModel', JSON.stringify(v)))
+watch(useSubApi, (v) => safeSetJson('useSubApi', v))
+watch(subApiUrl, (v) => safeSetJson('subApiUrl', v))
+watch(subApiKey, (v) => safeSetJson('subApiKey', v))
+watch(subApiModel, (v) => safeSetJson('subApiModel', v))
 
-watch(apiPresets, (v) => localStorage.setItem('apiPresets', JSON.stringify(v)), { deep: true })
-watch(subApiPresets, (v) => localStorage.setItem('subApiPresets', JSON.stringify(v)), { deep: true })
+watch(apiPresets, (v) => safeSetJson('apiPresets', v), { deep: true })
+watch(subApiPresets, (v) => safeSetJson('subApiPresets', v), { deep: true })
 
 const availableModels = ref([])
 const isFetchingModels = ref(false)
