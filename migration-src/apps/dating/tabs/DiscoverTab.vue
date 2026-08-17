@@ -326,7 +326,8 @@ const {
   notifications,
   generateRecommend,
   generateFollowing,
-  publishMyPost
+  publishMyPost,
+  buildSeedPosts
 } = useDatingFeed()
 
 const currentFeed = ref('recommend')
@@ -606,8 +607,17 @@ const handleReposted = () => {
   window.dispatchEvent(new CustomEvent('sys-toast', { detail: '转发成功，已出现在你的主页动态里' }))
 }
 
+// 初始化：推荐流为空时，先填充本地种子内容，保证没配 API 也有东西可看。
+// 不再强制自动调 AI 生成——改为静默后台尝试一次，失败（如未配 API）也不影响浏览。
 if (recommendPosts.value.length === 0) {
-  forceRefresh()
+  recommendPosts.value = buildSeedPosts()
+  void (async () => {
+    try {
+      await generateRecommend()
+    } catch (e) {
+      console.warn('[coldpark] 静默生成推荐流失败，已保留种子内容', e)
+    }
+  })()
 }
 </script>
 

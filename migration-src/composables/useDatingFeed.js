@@ -497,6 +497,53 @@ export function useDatingFeed() {
     return 'comment'
   }
 
+  // 本地种子动态：不调用任何 AI/API，确保没配 API 时广场也有内容可看。
+  const buildSeedPosts = () => {
+    const seeds = [
+      { content: '深夜的便利店，热好的关东煮冒着白气。收银台小哥多送了我一颗溏心蛋，说是今天最后一份了。', tags: ['夜猫子', '便利店', '小确幸'] },
+      { content: '今天换了条回家的路，发现巷子口新开了一家旧书店。老板说书都是按斤卖的，我抱走了三本。', tags: ['读书', '旧书店', '散步'] },
+      { content: '地铁上看到有人捧着一束向日葵，一路上都在笑。不知道是去见谁，但祝他今天顺利。', tags: ['地铁', '偶遇', '温暖'] },
+      { content: '自己做了顿晚饭，卖相一般但味道不错。生活嘛，糊弄一下也能过，开心就好。', tags: ['做饭', '日常', '独居'] },
+      { content: '耳机里的歌刚好放到最喜欢的那句，窗外的晚霞也是今天限量供应的。这种时刻，想找人分享。', tags: ['音乐', '晚霞', '分享欲'] }
+    ]
+
+    return seeds.map((seed, idx) => {
+      const actor = pickStrangerIdentity(seed.nickname || '')
+      const post = normalizePost({
+        id: `seed_${Date.now()}_${idx}`,
+        nickname: actor.nickname,
+        age: actor.age,
+        gender: actor.gender,
+        content: seed.content,
+        tags: seed.tags || [],
+        timestamp: Date.now() - idx * 3600000 - 60000,
+        likes: 3 + ((Date.now() + idx) % 20),
+        isLiked: false,
+        realCharId: null,
+        chatId: null,
+        comments: []
+      })
+      post.interactionMeta = { initialBurstDone: true, replyBudget: 6, dmTriggered: false }
+      // 配几条本地评论，让它看起来是活的
+      const commenter1 = pickStrangerIdentity('')
+      const commenter2 = pickStrangerIdentity('')
+      post.comments = sanitizeComments([
+        buildFallbackComment(post, commenter1, 0),
+        buildFallbackComment(post, commenter2, 1),
+        makeComment({
+          nickname: actor.nickname,
+          content: '突然想看看有没有人也有同款心情。',
+          isMine: false,
+          age: actor.age,
+          gender: actor.gender,
+          tags: [],
+          timestamp: Date.now() - idx * 3600000 + 60000
+        })
+      ])
+      return post
+    })
+  }
+
   const buildFallbackComment = (post, actor, idx = 0) => {
     const templates = [
       '这条说得还挺真诚的。',
@@ -879,7 +926,13 @@ ${charContext}
       return true
     } catch (e) {
       console.error('生成推荐流失败', e)
-      emitToast('广场刷新失败，请稍后重试')
+      // 失败且广场仍为空时，用本地种子内容兜底，避免用户看到一片空白
+      if (!recommendPosts.value.length) {
+        recommendPosts.value = buildSeedPosts()
+        emitToast('当前为离线示例内容，可稍后刷新获取 AI 动态')
+      } else {
+        emitToast('广场刷新失败，请稍后重试')
+      }
       return false
     }
   }
@@ -1308,6 +1361,7 @@ ${post.repostOf ? `这条动态里还转发了一条原帖，原帖作者是“$
     buildFeedShareMessage,
     markAllRead,
     markNotificationRead,
-    applyRetentionLimits
+    applyRetentionLimits,
+    buildSeedPosts
   }
 }
