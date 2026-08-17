@@ -1,0 +1,8 @@
+{
+  "name": "coldpark-migration-build",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --config migration-vite.config.js"
+  }
+}
