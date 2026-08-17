@@ -7,12 +7,6 @@
     "description":  "A social app for discovering, matching, and chatting with AI characters.",
     "icon":  "icon.png",
     "entry":  "index.html",
-    "resources":  {
-                      "assets":  [
-                                     "assets/migration-index-lfsa4CpP.css",
-                                     "assets/migration-index-DiqHDhAi.js"
-                                 ]
-                  },
     "permissions":  [
                         "app.data.read",
                         "app.data.write",

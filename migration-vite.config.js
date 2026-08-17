@@ -6,6 +6,12 @@ import { join, dirname } from 'node:path'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
+const localStorageShim = `<script>
+/* coldpark sandbox compatibility shim: some phone webviews block localStorage,
+   and module top-level reads throw before the app can show anything. */
+(function(){var ok=!1;try{var k="__cp_ls_probe__";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=!0}catch(e){ok=!1}if(ok)return;var st={};var fake={getItem:function(k){return Object.prototype.hasOwnProperty.call(st,k)?st[k]:null},setItem:function(k,v){st[k]=String(v)},removeItem:function(k){delete st[k]},clear:function(){st={}},key:function(i){var ks=Object.keys(st);return i>=0&&i<ks.length?ks[i]:null}};Object.defineProperty(fake,"length",{get:function(){return Object.keys(st).length}});try{Object.defineProperty(window,"localStorage",{value:fake,configurable:!0,writable:!0})}catch(e2){try{window.localStorage=fake}catch(e3){}}})();
+</script>`
+
 function inlineSingleFile() {
   return {
     name: 'inline-single-file',
@@ -17,6 +23,10 @@ function inlineSingleFile() {
       const targetHtml = join(appDir, 'index.html')
 
       let html = readFileSync(sourceHtml, 'utf8')
+
+      if (!html.includes('__cp_ls_probe__')) {
+        html = html.replace('</head>', `${localStorageShim}</head>`)
+      }
 
       // Vite emits local CSS and JS assets. Inline them so the uploaded APP
       // does not depend on a same-origin HTTP server or module/CORS loading.
