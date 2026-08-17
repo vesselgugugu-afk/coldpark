@@ -161,6 +161,9 @@ const jumpToChat = (newChatId) => {
   flex-direction: column;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  /* 避开宿主顶部状态栏：内容整体下移，页面相应缩短。
+     宿主会注入 --ai-phone-app-safe-top（未注入时用 44px 兜底）。 */
+  padding-top: var(--ai-phone-app-safe-top, 44px);
 }
 
 .slide-up-enter-active,
@@ -255,7 +258,7 @@ const jumpToChat = (newChatId) => {
 
 .elegant-toast-container {
   position: absolute;
-  top: 70px;
+  top: calc(var(--ai-phone-app-safe-top, 44px) + 64px);
   left: 0;
   width: 100%;
   display: flex;
