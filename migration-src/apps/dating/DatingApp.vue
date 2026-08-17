@@ -151,11 +151,13 @@ const jumpToChat = (newChatId) => {
 .dating-app-container {
   position: absolute;
   /* 整个容器下移到宿主状态栏之下：聊天室/速配等 absolute 全屏子页
-     也一并避让（此前仅 padding 下移文档流内容，absolute 子页仍会盖住顶部） */
-  top: var(--ai-phone-app-safe-top, 44px);
+     也一并避让（此前仅 padding 下移文档流内容，absolute 子页仍会盖住顶部）。
+     偏移上限压到状态栏量级：宿主注入的 --ai-phone-app-safe-top 可能含悬浮胶囊
+     高度，冷推只需避开状态栏，胶囊是宿主 UI 会浮在最上层，无需让位。 */
+  top: min(var(--ai-phone-app-safe-top, 44px), 32px);
   left: 0;
   width: 100%;
-  height: calc(100% - var(--ai-phone-app-safe-top, 44px));
+  height: calc(100% - min(var(--ai-phone-app-safe-top, 44px), 32px));
   background-color: #f4f5f7;
   color: #1c1c1e;
   /* 去掉高 z-index，避免盖住宿主右上角的系统返回胶囊 */
