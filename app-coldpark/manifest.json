@@ -28,15 +28,6 @@
                     ],
     "extensions":  {
                        "chat":  {
-                                    "plusActions":  [
-                                                        {
-                                                            "id":  "open-coldpark",
-                                                            "label":  "Open coldpark",
-                                                            "entry":  "discover",
-                                                            "presentation":  "fullscreen",
-                                                            "description":  "Open the coldpark discovery and matching experience."
-                                                        }
-                                                    ],
                                     "directives":  [
                                                        {
                                                            "id":  "coldpark-match",

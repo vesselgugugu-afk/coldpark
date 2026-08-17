@@ -156,7 +156,8 @@ const jumpToChat = (newChatId) => {
   height: 100%;
   background-color: #f4f5f7;
   color: #1c1c1e;
-  z-index: 500;
+  /* 去掉高 z-index，避免盖住宿主右上角的系统返回胶囊 */
+  z-index: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;

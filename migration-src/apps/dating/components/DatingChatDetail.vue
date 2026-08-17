@@ -162,8 +162,21 @@
             所有记录已秘密并入 <b>{{ undercoverChar.name }}</b> 的记忆库中。去 QQ 找 TA 算账吧！
           </p>
           <p style="text-align:left; color:#555; font-size:13px; line-height:1.6;" v-else>
-            TA 已向你的 QQ 发送了好友验证申请，请前往 <b style="color:#1c1c1e;">[桌面 - QQ - 通讯录 - 新的朋友]</b> 中查看并处理。
+            TA 已向你发送了好友验证申请。你可以在下方把他/她的完整人设导出成角色卡，<b style="color:#1c1c1e;">去桌面「角色」App 导入后</b>，就能像普通角色一样和 TA 聊天了。
           </p>
+
+          <!-- 纯路人：导出角色卡 -->
+          <template v-if="!undercoverChar && exportedCard">
+            <div class="export-card-box">
+              <div class="export-card-tip">
+                角色卡已生成（V3 格式，含 TA 的完整人设）。下载后到 <b>桌面 → 角色 → 导入</b>，即可把 TA 变成你的正式角色。
+              </div>
+              <div class="reveal-actions" style="margin-top: 10px;">
+                <button class="btn-accept" style="box-shadow: none;" @click="downloadExportedCard">导出角色卡</button>
+                <button class="btn-copy" style="box-shadow: none;" @click="copyExportedCard">复制设定</button>
+              </div>
+            </div>
+          </template>
           
           <div class="reveal-actions" style="margin-top: 15px;">
             <button class="btn-accept" style="width: 100%; box-shadow: none;" @click="finishReveal">我知道了</button>
@@ -243,6 +256,10 @@ const pendingAutoSummary = ref(null)
 const apiLog = ref({ req: null, res: null, reqTokens: 0, resTokens: 0, time: '' })
 
 const restrictedAlert = ref({ show: false, title: '', desc: '', icon: '', type: '' })
+
+// reveal 后生成的角色卡（V3 格式，宿主「角色」App 可导入）
+const exportedCard = ref(null)
+const exportedCardName = ref('')
 
 let pressTimer = null
 const actionSheet = ref({ show: false, msg: null })
@@ -772,8 +789,94 @@ const handleAcceptReveal = async () => {
 
   addFriendRequest(realSession.id, `你好，我是 ${realName}，我们在冷推聊得很开心。`)
   await addMemory(realSession.id, { characterId: realChar.id, type: 'milestone', source: 'dating_app', content: `我们在冷推(Spark)相遇，今天正式交换了姓名（原来TA叫${realName}），并互相发送了好友验证。` })
-  
+
+  // 纯路人：把完整人设打包成 V3 角色卡，供用户在桌面「角色」App 导入为真正的宿主角色
+  try {
+    const cardJson = buildV3CardJson(realName)
+    exportedCard.value = cardJson
+    exportedCardName.value = `${realName}_coldpark.json`
+  } catch (e) {
+    console.error('生成角色卡失败', e)
+    exportedCard.value = null
+  }
+
   showSuccessModal.value = true
+}
+
+// 把冷推生成的完整人设（fullJson）转成宿主「角色」App 可导入的 V3 角色卡
+const buildV3CardJson = (realName) => {
+  const fullJson = chatProfile.value?.fullJson || {}
+  const nickname = chatProfile.value?.nickname || realName || '未知用户'
+  const avatar = getStableAvatar(nickname)
+
+  // 把结构化的 personality 对象转成可读文本
+  const p = fullJson.personality || {}
+  const personalityText = [
+    p.archetype ? `角色标签：${p.archetype}` : '',
+    p.public_persona ? `外在表现：${p.public_persona}` : '',
+    p.private_self ? `真实性格：${p.private_self}` : '',
+    p.core_motive ? `核心驱动力：${p.core_motive}` : '',
+    p.self_perception ? `自我认知：${p.self_perception}` : '',
+    p.internal_conflict ? `内心矛盾：${p.internal_conflict}` : ''
+  ].filter(Boolean).join('\n')
+
+  const tagList = Array.isArray(fullJson.tag) ? fullJson.tag : (Array.isArray(fullJson.tags) ? fullJson.tags : [])
+
+  const card = {
+    spec: 'chara_card_v3',
+    spec_version: '3.0',
+    data: {
+      name: realName,
+      description: JSON.stringify(fullJson, null, 2),
+      personality: personalityText || fullJson.identity || '',
+      scenario: '你们在冷推(Spark)匿名交友软件上相识，经历了一段保密协议的匿名聊天后，今天终于交换了真实身份。',
+      first_mes: '我们终于正式见面了。',
+      mes_example: '',
+      creator_notes: '由冷推(Spark)在掉马甲时生成',
+      system_prompt: '',
+      post_history_instructions: '',
+      alternate_greetings: [],
+      character_book: null,
+      tags: tagList,
+      creator: 'coldpark',
+      character_version: '1.0.0',
+      extensions: {}
+    },
+    avatar: avatar || 'none'
+  }
+  return JSON.stringify(card, null, 2)
+}
+
+// 下载角色卡为 .json 文件
+const downloadExportedCard = () => {
+  if (!exportedCard.value) return
+  const blob = new Blob([exportedCard.value], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = exportedCardName.value || 'coldpark_character.json'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  window.dispatchEvent(new CustomEvent('sys-toast', { detail: '角色卡已导出，请到桌面「角色」App 导入' }))
+}
+
+// 把角色卡 JSON 复制到剪贴板（备用方案）
+const copyExportedCard = async () => {
+  if (!exportedCard.value) return
+  try {
+    await navigator.clipboard.writeText(exportedCard.value)
+    window.dispatchEvent(new CustomEvent('sys-toast', { detail: '角色卡 JSON 已复制' }))
+  } catch (e) {
+    const ta = document.createElement('textarea')
+    ta.value = exportedCard.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    window.dispatchEvent(new CustomEvent('sys-toast', { detail: '角色卡 JSON 已复制' }))
+  }
 }
 
 const finishReveal = async () => {
@@ -1183,5 +1286,28 @@ const finishReveal = async () => {
   background: #14CCCC;
   color: white;
   box-shadow: 0 4px 12px rgba(20, 204, 204, 0.3);
+}
+
+.btn-copy {
+  background: #f4f5f7;
+  color: #1c1c1e;
+  box-shadow: none;
+}
+
+.export-card-box {
+  margin-top: 14px;
+  background: #f8fafc;
+  border: 1px dashed #14CCCC;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.export-card-tip {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.6;
+  text-align: left;
+  margin-bottom: 4px;
 }
 </style>
