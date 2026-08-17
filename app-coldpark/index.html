@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>coldpark</title>
-    
+    <script>
+    /* coldpark 沙盒兼容垫片：iframe 沙盒可能禁用 localStorage，模块顶层读取会抛错导致白屏，这里用内存版兜底 */
+    (function(){var ok=!1;try{var k="__cp_ls_probe__";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=!0}catch(e){ok=!1}if(ok)return;var st={};var fake={getItem:function(k){return Object.prototype.hasOwnProperty.call(st,k)?st[k]:null},setItem:function(k,v){st[k]=String(v)},removeItem:function(k){delete st[k]},clear:function(){st={}},key:function(i){var ks=Object.keys(st);return i>=0&&i<ks.length?ks[i]:null}};Object.defineProperty(fake,"length",{get:function(){return Object.keys(st).length}});try{Object.defineProperty(window,"localStorage",{value:fake,configurable:!0,writable:!0})}catch(e2){try{window.localStorage=fake}catch(e3){}}})();
+    </script>
     <script type="module" crossorigin src="./assets/migration-index-DiqHDhAi.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/migration-index-lfsa4CpP.css">
   </head>
