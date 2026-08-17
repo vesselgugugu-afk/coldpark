@@ -1,0 +1,64 @@
+{
+    "sdkVersion":  "1.0",
+    "id":  "coldpark.dating",
+    "name":  "coldpark",
+    "version":  "1.0.0",
+    "author":  "coldpark",
+    "description":  "A social app for discovering, matching, and chatting with AI characters.",
+    "icon":  "icon.png",
+    "entry":  "index.html",
+    "resources":  {
+                      "assets":  [
+                                     "assets/migration-index-lfsa4CpP.css",
+                                     "assets/migration-index-DiqHDhAi.js"
+                                 ]
+                  },
+    "permissions":  [
+                        "app.data.read",
+                        "app.data.write",
+                        "characters.read",
+                        "ai.generate",
+                        "chat.read",
+                        "chat.write",
+                        "chat.sendCard",
+                        "chat.requestReply",
+                        "notifications.read",
+                        "notifications.write",
+                        "ui.toast"
+                    ],
+    "extensions":  {
+                       "chat":  {
+                                    "plusActions":  [
+                                                        {
+                                                            "id":  "open-coldpark",
+                                                            "label":  "Open coldpark",
+                                                            "entry":  "discover",
+                                                            "presentation":  "fullscreen",
+                                                            "description":  "Open the coldpark discovery and matching experience."
+                                                        }
+                                                    ],
+                                    "directives":  [
+                                                       {
+                                                           "id":  "coldpark-match",
+                                                           "label":  "coldpark match",
+                                                           "syntax":  "[coldpark-match:character:summary]",
+                                                           "description":  "Show a coldpark match as an interactive card.",
+                                                           "card":  {
+                                                                        "appLabel":  "coldpark",
+                                                                        "title":  "{{character}}",
+                                                                        "subtitle":  "New match",
+                                                                        "body":  "{{summary}}",
+                                                                        "status":  "View match",
+                                                                        "accentColor":  "#15b8a6",
+                                                                        "actions":  [
+                                                                                        {
+                                                                                            "label":  "Open coldpark"
+                                                                                        }
+                                                                                    ]
+                                                                    }
+                                                       }
+                                                   ]
+                                }
+                   }
+}
+
