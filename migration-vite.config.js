@@ -38,11 +38,17 @@ function inlineSingleFile() {
         }
       )
 
+      // 注意：内联 <script> 的 defer 属性无效（defer 只对外部脚本生效）。
+      // 若把应用代码内联在 <head>，会在 #app 解析出来之前同步执行，mount 找不到目标直接白屏。
+      // 因此这里先把所有构建出的 JS 收集起来，统一内联到 </body> 之前（#app 之后）执行。
+      let jsBundle = ''
+
       html = html.replace(
         /<script[^>]*type=["']module["'][^>]*crossorigin[^>]*src=["']\.\/assets\/([^"']+)\.js["'][^>]*><\/script>/g,
         (_, name) => {
           const js = readFileSync(join(builtDir, 'assets', `${name}.js`), 'utf8')
-          return `<script defer>${js}</script>`
+          jsBundle += `${js}\n`
+          return ''
         }
       )
 
@@ -50,9 +56,14 @@ function inlineSingleFile() {
         /<script[^>]*type=["']module["'][^>]*src=["']\.\/assets\/([^"']+)\.js["'][^>]*><\/script>/g,
         (_, name) => {
           const js = readFileSync(join(builtDir, 'assets', `${name}.js`), 'utf8')
-          return `<script defer>${js}</script>`
+          jsBundle += `${js}\n`
+          return ''
         }
       )
+
+      if (jsBundle) {
+        html = html.replace('</body>', `<script>${jsBundle}</script>\n</body>`)
+      }
 
       mkdirSync(appDir, { recursive: true })
       rmSync(join(appDir, 'assets'), { recursive: true, force: true })
