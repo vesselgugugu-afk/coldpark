@@ -25,10 +25,11 @@ export function useDatingMatch() {
 
   const callApi = async (messages, options = {}) => {
     if (bridge.hasSdk()) {
-      const result = await bridge.generate({
-        characterId: playerProfile.value.characterId || playerProfile.value.id,
-        appTags: ['coldpark', 'dating'],
-        instruction: messages.map((message) => `${message.role}: ${message.content}`).join('\n'),
+      // 速配/场景/人设扩写是“生成全新 NPC 内容”，不绑定宿主角色。
+      // 走通用模型 ai.chat，避免 ai.generate 因找不到宿主角色报
+      // “Character not found: 1”。
+      const result = await bridge.chat({
+        messages,
         temperature: options.temperature
       })
       return { content: result?.text || result?.content || result?.message || '' }

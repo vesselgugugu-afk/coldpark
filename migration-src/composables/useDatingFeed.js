@@ -309,10 +309,11 @@ export function useDatingFeed() {
 
   const callAI = async (messages, options = {}) => {
     if (bridge.hasSdk()) {
-      const result = await bridge.generate({
-        characterId: playerProfile.value.characterId || playerProfile.value.id,
-        appTags: ['coldpark', 'dating', 'feed'],
-        instruction: messages.map((message) => `${message.role}: ${message.content}`).join('\n'),
+      // 广场动态/评论/私信等是“以匿名网友身份生成”，不绑定宿主角色，
+      // 走通用模型 ai.chat，避免 ai.generate 因找不到宿主角色报
+      // “Character not found: 1”。
+      const result = await bridge.chat({
+        messages,
         temperature: options.temperature ?? 0.85
       })
       return String(result?.text || result?.content || result?.message || '').replace(/```json/gi, '').replace(/```/g, '').trim()

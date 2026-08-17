@@ -17,6 +17,7 @@
                         "app.data.write",
                         "characters.read",
                         "ai.generate",
+                        "ai.chat",
                         "chat.read",
                         "chat.write",
                         "chat.sendCard",

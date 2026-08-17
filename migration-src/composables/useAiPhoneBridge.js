@@ -168,6 +168,19 @@ export function useAiPhoneBridge() {
     return clone(result)
   }
 
+  // 通用模型通道：不绑定宿主角色，用于速配卡片/场景/推荐流/评论/人设扩写等
+  // “生成全新内容”的场景。宿主 SDK 里 ai.generate 必须传真实角色 id，
+  // 而这些场景并无宿主角色，传 playerProfile.id(=1) 会抛 “Character not found”。
+  const chat = async (options = {}) => {
+    if (!hasSdk()) {
+      const messages = Array.isArray(options) ? options : (options.messages || [])
+      const last = messages[messages.length - 1]
+      return { text: `[coldpark demo] ${last?.content ? String(last.content).slice(0, 80) : 'AI reply'}` }
+    }
+    const result = await getSdk().ai.chat(options)
+    return { text: resultText(result) }
+  }
+
   const readHistory = async (characterId, options = {}) => {
     const payload = typeof characterId === 'object'
       ? characterId
@@ -300,6 +313,7 @@ export function useAiPhoneBridge() {
     dbDelete,
     characters,
     generate,
+    chat,
     readHistory,
     writeHistory,
     requestReply,
