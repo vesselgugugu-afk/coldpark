@@ -28,16 +28,6 @@ function inlineSingleFile() {
         html = html.replace('</head>', `${localStorageShim}</head>`)
       }
 
-      // Vite emits local CSS and JS assets. Inline them so the uploaded APP
-      // does not depend on a same-origin HTTP server or module/CORS loading.
-      html = html.replace(
-        /<link[^>]+rel=["']stylesheet["'][^>]*href=["']\.\/assets\/([^"']+)\.css["'][^>]*>/g,
-        (_, name) => {
-          const css = readFileSync(join(builtDir, 'assets', `${name}.css`), 'utf8')
-          return `<style>${css}</style>`
-        }
-      )
-
       // 内联单文件版在小手机宿主的 iframe 里会触发 `SyntaxError: Unexpected token '<'`，
       // 而「外链 assets + 入口垫片」形态已在目标环境验证可正常工作。
       // 因此这里只做两件事：① 注入 localStorage 垫片；② 保留 Vite 原生外链

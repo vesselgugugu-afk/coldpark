@@ -4,5 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build --config migration-vite.config.js"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.1"
   }
 }

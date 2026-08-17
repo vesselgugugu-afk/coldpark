@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import DatingApp from './apps/dating/DatingApp.vue'
 import './styles.css'
+import '@fortawesome/fontawesome-free/css/all.min.css'
 
 const app = createApp(DatingApp, { show: true })
 app.config.errorHandler = (error) => {
