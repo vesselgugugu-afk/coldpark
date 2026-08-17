@@ -1,7 +1,7 @@
 import { defineConfig } from 'C:/work/ai-phone/node_modules/vite/dist/node/index.js'
 import vue from 'C:/work/ai-phone/node_modules/@vitejs/plugin-vue/dist/index.mjs'
 import { fileURLToPath, URL } from 'node:url'
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
@@ -38,35 +38,18 @@ function inlineSingleFile() {
         }
       )
 
-      // 注意：内联 <script> 的 defer 属性无效（defer 只对外部脚本生效）。
-      // 若把应用代码内联在 <head>，会在 #app 解析出来之前同步执行，mount 找不到目标直接白屏。
-      // 因此这里先把所有构建出的 JS 收集起来，统一内联到 </body> 之前（#app 之后）执行。
-      let jsBundle = ''
-
-      html = html.replace(
-        /<script[^>]*type=["']module["'][^>]*crossorigin[^>]*src=["']\.\/assets\/([^"']+)\.js["'][^>]*><\/script>/g,
-        (_, name) => {
-          const js = readFileSync(join(builtDir, 'assets', `${name}.js`), 'utf8')
-          jsBundle += `${js}\n`
-          return ''
-        }
-      )
-
-      html = html.replace(
-        /<script[^>]*type=["']module["'][^>]*src=["']\.\/assets\/([^"']+)\.js["'][^>]*><\/script>/g,
-        (_, name) => {
-          const js = readFileSync(join(builtDir, 'assets', `${name}.js`), 'utf8')
-          jsBundle += `${js}\n`
-          return ''
-        }
-      )
-
-      if (jsBundle) {
-        html = html.replace('</body>', `<script>${jsBundle}</script>\n</body>`)
-      }
-
+      // 内联单文件版在小手机宿主的 iframe 里会触发 `SyntaxError: Unexpected token '<'`，
+      // 而「外链 assets + 入口垫片」形态已在目标环境验证可正常工作。
+      // 因此这里只做两件事：① 注入 localStorage 垫片；② 保留 Vite 原生外链
+      // （<script type="module" src="./assets/..."> 与 <link href="./assets/...css">），
+      // 并把构建出的 assets 原样复制到 app-coldpark/assets，不再内联、不再删 assets。
       mkdirSync(appDir, { recursive: true })
-      rmSync(join(appDir, 'assets'), { recursive: true, force: true })
+      const builtAssets = join(builtDir, 'assets')
+      const targetAssets = join(appDir, 'assets')
+      rmSync(targetAssets, { recursive: true, force: true })
+      if (existsSync(builtAssets)) {
+        cpSync(builtAssets, targetAssets, { recursive: true })
+      }
       writeFileSync(targetHtml, html, 'utf8')
     }
   }
