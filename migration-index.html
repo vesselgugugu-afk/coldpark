@@ -27,6 +27,7 @@
         } catch (e) {}
       }
       window.__cpProbe = { render: render };
+      render('探针已激活', '页面脚本已开始执行');
       window.addEventListener('error', function (e) {
         var msg = e.message || 'Script error';
         if (e.filename) msg += '\n  @ ' + e.filename + (e.lineno ? ':' + e.lineno : '');
