@@ -96,6 +96,22 @@ function inlineSingleFile() {
       if (existsSync(builtAssets)) {
         cpSync(builtAssets, targetAssets, { recursive: true })
       }
+      // 外链 shim：宿主 iframe 沙盒 CSP 拦截 inline script（垫片/探针是 inline 时
+      // 会被静默丢弃，导致 module 顶层读 localStorage 抛错 → 白屏且无提示）。
+      // 因此把「localStorage 垫片 + 启动探针」合并成外链 cp-shim.js，同步执行于
+      // 任何 module 之前，规避 CSP inline 限制。
+      const cpShimSrc = join(projectRoot, 'migration-src', 'cp-shim.js')
+      if (existsSync(cpShimSrc)) {
+        const shimDir = join(appDir, 'assets')
+        mkdirSync(shimDir, { recursive: true })
+        writeFileSync(join(shimDir, 'cp-shim.js'), readFileSync(cpShimSrc, 'utf8'), 'utf8')
+      }
+      // 移除 built html 中残留的 inline 探针，统一改走外链 cp-shim.js
+      html = html.replace(/<script>\s*\/\* coldpark startup probe[\s\S]*?<\/script>/g, '')
+      if (!html.includes('cp-shim.js')) {
+        html = html.replace('<head>', '<head>\n    <script src="./assets/cp-shim.js"></script>')
+      }
+
       writeFileSync(targetHtml, html, 'utf8')
     }
   }
