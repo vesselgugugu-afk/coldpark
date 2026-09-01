@@ -28,88 +28,47 @@ function inlineSingleFile() {
         html = html.replace('</head>', `${localStorageShim}</head>`)
       }
 
-      // 强制注入启动探针（与垫片同级）：即使 Vite 对入口 HTML 做了压缩/改写，
-      // closeBundle 后处理也能保证最终 app-coldpark/index.html 一定带探针，
-      // 用于白屏时在页面顶部显示诊断信息。
-      const startupProbe = `<script>
-/* coldpark startup probe: 把启动阶段任何错误直接渲染到页面，用于诊断白屏 */
-(function () {
-  var box = null;
-  function render(tag, detail) {
-    try {
-      if (!box) {
-        box = document.createElement('div');
-        box.id = '__cp_probe__';
-        box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:999999;background:#fff1f0;color:#b91c1c;border:2px solid #ef4444;border-radius:10px;padding:12px;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.3);max-height:70vh;overflow:auto;text-align:left;';
-        document.documentElement.appendChild(box);
-      }
-      var line = document.createElement('div');
-      line.style.cssText = 'border-bottom:1px dashed #fecaca;padding:4px 0;';
-      line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + tag + (detail ? ': ' + detail : '');
-      box.appendChild(line);
-    } catch (e) {}
-  }
-  window.__cpProbe = { render: render };
-  render('探针已激活', '页面脚本已开始执行');
-  window.addEventListener('error', function (e) {
-    var msg = e.message || 'Script error';
-    if (e.filename) msg += '\\n  @ ' + e.filename + (e.lineno ? ':' + e.lineno : '');
-    render('window.onerror', msg);
-  }, true);
-  window.addEventListener('unhandledrejection', function (e) {
-    var r = e.reason;
-    var msg = (r && (r.stack || r.message)) ? (r.stack || r.message) : String(r);
-    render('unhandledrejection', msg);
-  });
-  function checkMounted() {
-    var app = document.getElementById('app');
-    if (app && app.childNodes.length === 0) {
-      render('PROBE', 'DOM 已就绪但 #app 为空：Vue 应用未挂载（脚本可能未执行或在挂载前抛错）');
-    }
-  }
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(checkMounted, 2000);
-  } else {
-    window.addEventListener('DOMContentLoaded', function () { setTimeout(checkMounted, 2000); });
-  }
-  document.addEventListener('error', function (e) {
-    var t = e.target;
-    if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK' || t.tagName === 'IMG')) {
-      render('资源加载失败', t.tagName + ' ' + (t.src || t.href || ''));
-    }
-  }, true);
-})();
-</script>`
-      if (!html.includes('__cp_probe__')) {
-        html = html.replace('</head>', `${startupProbe}</head>`)
+      // 终极方案：单文件内联。
+      // 因为宿主以 file:// 或类似沙盒协议运行，外链 module 必定报 CORS 错误。
+      // 所以我们必须把所有 JS 和 CSS 强行塞进 HTML。
+      // 为了避免 `<script type="module">` 内联带来的奇怪解析错误，
+      // Vite 输出的代码会被直接放到一个普通 `<script>` 标签里执行。
+      mkdirSync(appDir, { recursive: true })
+      
+      // 提取并移除所有外链 CSS
+      html = html.replace(/<link[^>]+rel=["']stylesheet["'][^>]*href=["']\.\/assets\/([^"']+)\.css["'][^>]*>/g, (_, name) => {
+        const cssPath = join(builtDir, 'assets', `${name}.css`)
+        if (existsSync(cssPath)) {
+          return `<style>${readFileSync(cssPath, 'utf8')}</style>`
+        }
+        return ''
+      })
+
+      // 提取并移除所有外链 JS
+      let jsContent = ''
+      html = html.replace(/<script[^>]+src=["']\.\/assets\/([^"']+)\.js["'][^>]*><\/script>/g, (_, name) => {
+        const jsPath = join(builtDir, 'assets', `${name}.js`)
+        if (existsSync(jsPath)) {
+          jsContent += readFileSync(jsPath, 'utf8') + '\n'
+        }
+        return ''
+      })
+      
+      // 清理 modulepreload
+      html = html.replace(/<link[^>]+rel=["']modulepreload["'][^>]*>/g, '')
+
+      // 将提取的 JS 作为普通脚本注入到底部
+      if (jsContent) {
+        // 如果 JS 里面有 </script> 字样，会导致 HTML 解析提前结束，替换掉
+        jsContent = jsContent.replace(/<\/script>/g, '<\\/script>')
+        html = html.replace('</body>', `<script>\n${jsContent}\n</script>\n</body>`)
       }
 
-      // 内联单文件版在小手机宿主的 iframe 里会触发 `SyntaxError: Unexpected token '<'`，
-      // 而「外链 assets + 入口垫片」形态已在目标环境验证可正常工作。
-      // 因此这里只做两件事：① 注入 localStorage 垫片；② 保留 Vite 原生外链
-      // （<script type="module" src="./assets/..."> 与 <link href="./assets/...css">），
-      // 并把构建出的 assets 原样复制到 app-coldpark/assets，不再内联、不再删 assets。
-      mkdirSync(appDir, { recursive: true })
-      const builtAssets = join(builtDir, 'assets')
-      const targetAssets = join(appDir, 'assets')
-      rmSync(targetAssets, { recursive: true, force: true })
-      if (existsSync(builtAssets)) {
-        cpSync(builtAssets, targetAssets, { recursive: true })
-      }
-      // 外链 shim：宿主 iframe 沙盒 CSP 拦截 inline script（垫片/探针是 inline 时
-      // 会被静默丢弃，导致 module 顶层读 localStorage 抛错 → 白屏且无提示）。
-      // 因此把「localStorage 垫片 + 启动探针」合并成外链 cp-shim.js，同步执行于
-      // 任何 module 之前，规避 CSP inline 限制。
+      // 将 cp-shim.js (垫片和探针) 内联回 head
       const cpShimSrc = join(projectRoot, 'migration-src', 'cp-shim.js')
       if (existsSync(cpShimSrc)) {
-        const shimDir = join(appDir, 'assets')
-        mkdirSync(shimDir, { recursive: true })
-        writeFileSync(join(shimDir, 'cp-shim.js'), readFileSync(cpShimSrc, 'utf8'), 'utf8')
-      }
-      // 移除 built html 中残留的 inline 探针，统一改走外链 cp-shim.js
-      html = html.replace(/<script>\s*\/\* coldpark startup probe[\s\S]*?<\/script>/g, '')
-      if (!html.includes('cp-shim.js')) {
-        html = html.replace('<head>', '<head>\n    <script src="./assets/cp-shim.js"></script>')
+        const shimContent = readFileSync(cpShimSrc, 'utf8').replace(/<\/script>/g, '<\\/script>')
+        html = html.replace('<head>', `<head>\n<script>\n${shimContent}\n</script>`)
       }
 
       writeFileSync(targetHtml, html, 'utf8')
@@ -131,8 +90,12 @@ export default defineConfig({
   build: {
     outDir: 'app-coldpark-built',
     emptyOutDir: true,
+    // 【关键】禁止拆包，强制输出单文件 JS 和单文件 CSS
     rollupOptions: {
-      input: fileURLToPath(new URL('./migration-index.html', import.meta.url))
+      input: fileURLToPath(new URL('./migration-index.html', import.meta.url)),
+      output: {
+        manualChunks: undefined
+      }
     }
   }
 })
