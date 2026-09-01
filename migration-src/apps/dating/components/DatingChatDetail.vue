@@ -296,7 +296,7 @@ watch(() => props.show, async (val) => {
         ? await bridge.dbGet('profiles', chatData.value.profileId)
         : await db.dating_profiles.get(chatData.value.profileId)
       messages.value = bridge.hasSdk()
-        ? await bridge.readHistory(chatData.value.characterId || chatProfile.value?.realCharId, 50)
+        ? await bridge.readHistory({ sessionId: chatData.value.sessionId || `dating_${props.chatId}`, limit: 50 })
         : await db.messages.where({ sessionId: `dating_${props.chatId}` }).toArray()
       scrollToBottom()
     } else {
@@ -631,8 +631,8 @@ const triggerAiReply = async () => {
   
   try {
     if (bridge.hasSdk()) {
-      await bridge.requestReply(chatData.value?.characterId || chatProfile.value?.realCharId)
-      messages.value = await bridge.readHistory(chatData.value?.characterId || chatProfile.value?.realCharId, 50)
+      await bridge.requestReply({ sessionId: chatData.value.sessionId || `dating_${props.chatId}` })
+      messages.value = await bridge.readHistory({ sessionId: chatData.value.sessionId || `dating_${props.chatId}`, limit: 50 })
       scrollToBottom()
       return
     }
