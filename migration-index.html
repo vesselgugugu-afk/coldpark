@@ -8,6 +8,54 @@
     /* coldpark sandbox compatibility shim */
     (function(){var ok=!1;try{var k="__cp_ls_probe__";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=!0}catch(e){ok=!1}if(ok)return;var st={};var fake={getItem:function(k){return Object.prototype.hasOwnProperty.call(st,k)?st[k]:null},setItem:function(k,v){st[k]=String(v)},removeItem:function(k){delete st[k]},clear:function(){st={}},key:function(i){var ks=Object.keys(st);return i>=0&&i<ks.length?ks[i]:null}};Object.defineProperty(fake,"length",{get:function(){return Object.keys(st).length}});try{Object.defineProperty(window,"localStorage",{value:fake,configurable:!0,writable:!0})}catch(e2){try{window.localStorage=fake}catch(e3){}}})();
     </script>
+    <script>
+    /* coldpark startup probe: 把启动阶段任何错误直接渲染到页面，用于诊断白屏 */
+    (function () {
+      var box = null;
+      function render(tag, detail) {
+        try {
+          if (!box) {
+            box = document.createElement('div');
+            box.id = '__cp_probe__';
+            box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:999999;background:#fff1f0;color:#b91c1c;border:2px solid #ef4444;border-radius:10px;padding:12px;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.3);max-height:70vh;overflow:auto;text-align:left;';
+            document.documentElement.appendChild(box);
+          }
+          var line = document.createElement('div');
+          line.style.cssText = 'border-bottom:1px dashed #fecaca;padding:4px 0;';
+          line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + tag + (detail ? ': ' + detail : '');
+          box.appendChild(line);
+        } catch (e) {}
+      }
+      window.__cpProbe = { render: render };
+      window.addEventListener('error', function (e) {
+        var msg = e.message || 'Script error';
+        if (e.filename) msg += '\n  @ ' + e.filename + (e.lineno ? ':' + e.lineno : '');
+        render('window.onerror', msg);
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        var msg = (r && (r.stack || r.message)) ? (r.stack || r.message) : String(r);
+        render('unhandledrejection', msg);
+      });
+      function checkMounted() {
+        var app = document.getElementById('app');
+        if (app && app.childNodes.length === 0) {
+          render('PROBE', 'DOM 已就绪但 #app 为空：Vue 应用未挂载（脚本可能未执行或在挂载前抛错）');
+        }
+      }
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(checkMounted, 2000);
+      } else {
+        window.addEventListener('DOMContentLoaded', function () { setTimeout(checkMounted, 2000); });
+      }
+      document.addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK' || t.tagName === 'IMG')) {
+          render('资源加载失败', t.tagName + ' ' + (t.src || t.href || ''));
+        }
+      }, true);
+    })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
