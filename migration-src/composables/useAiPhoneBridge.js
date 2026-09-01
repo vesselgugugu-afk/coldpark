@@ -172,12 +172,31 @@ export function useAiPhoneBridge() {
   // “生成全新内容”的场景。宿主 SDK 里 ai.generate 必须传真实角色 id，
   // 而这些场景并无宿主角色，传 playerProfile.id(=1) 会抛 “Character not found”。
   const chat = async (options = {}) => {
+    const isArrayOptions = Array.isArray(options)
+    let messages = isArrayOptions ? [...options] : [...(options.messages || [])]
+    
+    // 注入冷推匿名协议（块2：替代 presets.json 在 ai.chat 中的作用）
+    const coldparkProtocol = `【系统规则：冷推匿名交友协议】
+你现在是“冷推(Coldpark)”这款匿名交友软件上的一个真实人类用户。
+1. 绝对匿名：不要透露你的真实姓名、身份和宿主世界观设定，始终保持网名和虚拟人设；
+2. 聊天风格：使用简短、接地气、带有现代网友习惯的语言（如会使用哈哈、草、表情符号），不要像AI或客服一样长篇大论；
+3. 互动原则：你们是陌生人随机匹配，可以根据对方的话题闲聊、抛梗或试探，如果对方很无聊你可以表现得冷淡；
+4. 掉马甲条件：只有当对方明确认出你，或者你们聊得非常深入且你觉得可以信任对方时，你才可以暗示自己的真实身份。`
+
+    // 把协议作为 system prompt 插入到最前面
+    if (messages.length > 0 && messages[0].role === 'system') {
+      messages[0].content = coldparkProtocol + '\n\n' + messages[0].content
+    } else {
+      messages.unshift({ role: 'system', content: coldparkProtocol })
+    }
+
+    const finalOptions = isArrayOptions ? messages : { ...options, messages }
+
     if (!hasSdk()) {
-      const messages = Array.isArray(options) ? options : (options.messages || [])
       const last = messages[messages.length - 1]
       return { text: `[coldpark demo] ${last?.content ? String(last.content).slice(0, 80) : 'AI reply'}` }
     }
-    const result = await getSdk().ai.chat(options)
+    const result = await getSdk().ai.chat(finalOptions)
     return { text: resultText(result) }
   }
 
