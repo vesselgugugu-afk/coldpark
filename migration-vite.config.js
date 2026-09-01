@@ -64,7 +64,7 @@ function inlineSingleFile() {
         html = html.replace('</body>', `<script>\n${jsContent}\n</script>\n</body>`)
       }
 
-      // 将 cp-shim.js (垫片和探针) 内联回 head
+      // 将 cp-shim.js (垫片) 内联回 head
       const cpShimSrc = join(projectRoot, 'migration-src', 'cp-shim.js')
       if (existsSync(cpShimSrc)) {
         const shimContent = readFileSync(cpShimSrc, 'utf8').replace(/<\/script>/g, '<\\/script>')
